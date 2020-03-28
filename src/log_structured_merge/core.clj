@@ -1,35 +1,55 @@
 (ns log-structured-merge.core
-  (:gen-class))
+  (:gen-class)
+  (:require [clojure.string :as str]))
 
+(def memetable {})
 
-(def memtable {})
+; Storing data
+(defn dict-length [dict]
+  (reduce (fn [count _] (inc count)) 0 dict))
 
-(defn find-length [dict]
- (reduce (fn [counter _] (inc counter)) 0 dict))
+(defn to-file [dict]
+  (doseq [tuple dict]
+    (let [key (nth tuple 0)
+          value (nth tuple 1)]
+      (let [in-txt (apply str key ":" value "\n")]
+        (spit "data.txt" in-txt :append true)))))
 
-
-(defn write-to-data [dict]
-  (for [tuple dict]
+(defn update-db [key value]
+  (if (<= 2 (dict-length memetable))
     (do 
-      (println tuple)
-      (let [in-string (apply str (conj tuple "\n"))]
-        (spit "data.txt" in-string :append true)))))
+      (to-file memetable)
+      (def memetable {})))
+  (def memetable (assoc memetable key value)))
 
 
-(defn update-dict [key value]
-  (do
-    (if (> (find-length memtable) 1)
-        (write-to-data memtable))
-    (def memtable (assoc memtable key value))))
+; Getting data
+(defn tuple-saver [dict raw]
+  (let [tuple (str/split raw #"-")
+        key (nth tuple 0)
+        value (nth tuple 1)]
+    (assoc dict key value)))
 
-(update-dict "key1" "value")
-(update-dict "key2" "value")
-(update-dict "key3" "value")
+(defn load-from-file []
+  (let [text (str/split (slurp "data.txt") #"\n")]
+    (reduce tuple-saver {} text)))
+
+(defn get-db [key]
+  (if (contains? memetable key)
+   (memetable key)
+   (let [dict (load-from-file)]
+    (dict key))))
 
 
-(defn -main
-  "Entry point"
-  [& args]
-  (run-lsm "Hello, World!"))
+; Setup for development
+(def setup-data ["a" 1 "b" 2 "c" 3])
 
+(loop [l setup-data]
+  (if (> 2 (count l))
+    nil
+    (do 
+      (let [key (nth l 0)
+            value (nth l 1)]
+        (println key value))
+      (recur (rest (rest l))))))
 
