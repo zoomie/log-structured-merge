@@ -25,9 +25,9 @@
 
 ; Getting data
 (defn tuple-saver [dict raw]
-  (let [tuple (str/split raw #"-")
-        key (nth tuple 0)
-        value (nth tuple 1)]
+  (let [tuple (str/split raw #":")
+        key (first tuple)
+        value (second tuple)]
     (assoc dict key value)))
 
 (defn load-from-file []
@@ -42,14 +42,12 @@
 
 
 ; Setup for development
-(def setup-data ["a" 1 "b" 2 "c" 3])
-
-(loop [l setup-data]
-  (if (> 2 (count l))
-    nil
-    (do 
-      (let [key (nth l 0)
-            value (nth l 1)]
-        (println key value))
-      (recur (rest (rest l))))))
-
+(defn setup-db [data-list]
+  (loop [l data-list]
+    (if (> 2 (count l))
+      nil
+      (do 
+        (let [key (first l)
+              value (second l)]
+          (update-db key value))
+        (recur (rest (rest l)))))))
