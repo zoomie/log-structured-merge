@@ -36,6 +36,7 @@
 (update-db "c" 3)
 (update-db "d" 4)
 (println memetable)
+(println *datafile-num*)
 
 ; Getting data
 (defn tuple-saver [dict raw]
@@ -44,15 +45,23 @@
         value (second tuple)]
     (assoc dict key value)))
 
-(defn load-from-file []
-  (let [text (str/split (slurp "data.txt") #"\n")]
+
+(defn load-from-file [prefix]
+  (let [file (apply str prefix "data.txt")
+        path (apply str "datadir/" file)
+        text (str/split (slurp path) #"\n")]
     (reduce tuple-saver {} text)))
 
 (defn get-db [key]
   (if (contains? memetable key)
-   (memetable key)
-   (let [dict (load-from-file)]
-    (dict key))))
+    (memetable key)
+    (loop [level *datafile-num*]
+      (if (> 1 level)
+        nil
+        (let [dict (load-from-file level)]
+          (if (contains? dict key)
+            (dict key)
+            (recur (dec level))))))))
 
 
 ; Setup for development
