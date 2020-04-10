@@ -30,8 +30,6 @@
 (update-db "b" 2)
 (update-db "c" 3)
 (update-db "d" 4)
-(println memetable)
-(println *datafile-num*)
 
 ; Getting data
 (defn tuple-saver [dict raw]
@@ -57,6 +55,30 @@
 
 (get-db "c")
 (get-db "a")
+
+(defn update-req [req]
+  (let [body (:body req)
+        bytes (byte-array (:content-length req))
+        _ (. body (read bytes))
+        text (String. bytes) 
+        [key value] (str/split text #"&")]
+    (update-db key value)))
+
+(defn get-req [req]
+  (let [key (req :query-string)]
+    (get-db key)))
+
+(defn app [req]
+  (if (= (req :request-method) :post)
+    (update-req req)
+    (println (get-req req)))
+  {:status  200
+   :headers {"Content-Type" "text/html"}
+   :body    "New text"})
+
+(defonce server (atom nil))
+
+(reset! server (s/run-server #'app {:port 8001}))
 
 ; Setup for development
 (defn setup-db [data-list]
