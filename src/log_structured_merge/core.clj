@@ -13,8 +13,9 @@
     (apply str "datadir/" file)))
 
 (defn to-file [dict]
-  (let [data-file (get-data-file)]
-    (doseq [tuple dict]
+  (let [data-file (get-data-file)
+        sorted-dict (into (sorted-map) dict)]
+    (doseq [tuple sorted-dict]
       (let [[key value] tuple]
         (let [in-txt (apply str key ":" value "\n")]
           (spit data-file in-txt :append true))))))
@@ -26,8 +27,8 @@
       (dosync (alter memetable (fn [_] {})))))
   (dosync (alter memetable assoc key value)))
 
-(update-db "a" 1)
-(update-db "b" 2)
+(update-db "b" 1)
+(update-db "a" 2)
 (update-db "c" 3)
 (update-db "d" 4)
 
