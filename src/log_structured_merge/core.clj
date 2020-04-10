@@ -1,35 +1,30 @@
 (ns log-structured-merge.core
   (:gen-class)
-  (:require [clojure.string :as str]))
+  (:require [clojure.string :as str])
+  (:require [org.httpkit.server :as s]))
 
-(def memetable {})
+(def memetable (ref {}))
+(def datafile-num (ref 0))
 
 ; Storing data
-(defn dict-length [dict]
-  (reduce (fn [count _] (inc count)) 0 dict))
-
-(def ^:dynamic *datafile-num* 0)
-
 (defn get-data-file []
-  (def ^:dynamic *datafile-num* (inc *datafile-num*))
-  (let [file (apply str *datafile-num* "data.txt")]
+  (dosync (alter datafile-num inc))
+  (let [file (apply str @datafile-num "data.txt")]
     (apply str "datadir/" file)))
-
 
 (defn to-file [dict]
   (let [data-file (get-data-file)]
     (doseq [tuple dict]
-      (let [key (first tuple)
-            value (second tuple)]
+      (let [[key value] tuple]
         (let [in-txt (apply str key ":" value "\n")]
           (spit data-file in-txt :append true))))))
 
 (defn update-db [key value]
-  (if (<= 2 (dict-length memetable))
+  (if (<= 2 (count @memetable))
     (do 
-      (to-file memetable)
-      (def memetable {})))
-  (def memetable (assoc memetable key value)))
+      (to-file @memetable)
+      (dosync (alter memetable (fn [_] {})))))
+  (dosync (alter memetable assoc key value)))
 
 (update-db "a" 1)
 (update-db "b" 2)
@@ -40,11 +35,8 @@
 
 ; Getting data
 (defn tuple-saver [dict raw]
-  (let [tuple (str/split raw #":")
-        key (first tuple)
-        value (second tuple)]
+  (let [[key value] (str/split raw #":")]
     (assoc dict key value)))
-
 
 (defn load-from-file [prefix]
   (let [file (apply str prefix "data.txt")
@@ -53,9 +45,9 @@
     (reduce tuple-saver {} text)))
 
 (defn get-db [key]
-  (if (contains? memetable key)
-    (memetable key)
-    (loop [level *datafile-num*]
+  (if (contains? @memetable key)
+    (@memetable key)
+    (loop [level @datafile-num]
       (if (> 1 level)
         nil
         (let [dict (load-from-file level)]
@@ -63,6 +55,8 @@
             (dict key)
             (recur (dec level))))))))
 
+(get-db "c")
+(get-db "a")
 
 ; Setup for development
 (defn setup-db [data-list]
