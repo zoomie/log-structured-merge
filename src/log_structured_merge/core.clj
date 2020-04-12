@@ -1,7 +1,8 @@
 (ns log-structured-merge.core
   (:gen-class)
   (:require [clojure.string :as str])
-  (:require [org.httpkit.server :as s]))
+  (:require [org.httpkit.server :as s])
+  (:require [clojure.java.shell :as shell]))
 
 (def memetable (ref {}))
 (def datafile-num (ref 0))
@@ -12,9 +13,8 @@
   (let [file (apply str @datafile-num "data.txt")]
     (apply str "datadir/" file)))
 
-(defn to-file [dict]
-  (let [data-file (get-data-file)
-        sorted-dict (into (sorted-map) dict)]
+(defn to-file [data-file dict]
+  (let [sorted-dict (into (sorted-map) dict)]
     (doseq [tuple sorted-dict]
       (let [[key value] tuple]
         (let [in-txt (apply str key ":" value "\n")]
@@ -23,7 +23,7 @@
 (defn update-db [key value]
   (if (<= 2 (count @memetable))
     (do 
-      (to-file @memetable)
+      (to-file (get-data-file) @memetable)
       (dosync (alter memetable (fn [_] {})))))
   (dosync (alter memetable assoc key value)))
 
@@ -91,3 +91,20 @@
               value (second l)]
           (update-db key value))
         (recur (rest (rest l)))))))
+
+; Compation 
+(defn load-all-data []
+  (loop [level @datafile-num
+        data-dict {}]
+    (if (> 1 level)
+      data-dict
+      (let [incoming-dict (load-from-file level)]
+        (recur (dec level) (merge data-dict incoming-dict))))))
+
+(load-all-data)
+
+(let [data (load-all-data)]
+  (to-file "datadir/compation.txt" data))
+
+
+; (shell/sh "rm" "datadir/*" :dir "/Users/andrew/work/log-structured-merge")
