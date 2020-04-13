@@ -101,10 +101,17 @@
       (let [incoming-dict (load-from-file level)]
         (recur (dec level) (merge data-dict incoming-dict))))))
 
-(load-all-data)
+(defn delete-files-in-datadir []
+  (let [files ((shell/sh "ls" "datadir") :out)
+        l-files (str/split files #"\n")]
+    (doseq [file l-files]
+      (let [path (apply str "datadir/" file)]
+        (shell/sh "rm" path)))))
 
-(let [data (load-all-data)]
-  (to-file "datadir/compation.txt" data))
+(let [data (load-all-data)
+      _ (delete-files-in-datadir)]
+  (to-file "datadir/1data.txt" data))
+
 
 
 ; (shell/sh "rm" "datadir/*" :dir "/Users/andrew/work/log-structured-merge")
